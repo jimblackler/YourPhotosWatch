@@ -1,0 +1,13 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+      xmlns:tools="http://schemas.android.com/tools"
+      tools:context="net.jimblackler.yourphotoswatch.PhotoSelectActivity">
+  <item android:id="@+id/oldest_first"
+        android:title="@string/oldest_first"
+        android:showAsAction="never"
+        android:checkable="true" />
+  <item android:id="@+id/newest_first"
+        android:title="@string/newest_first"
+        android:showAsAction="never"
+        android:checkable="true" />
+
+</menu>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="title_activity_select_pictures">Select photos to show</string>
+  <string name="photo_thumbnail">Photo thumbnail</string>
+  <string name="newest_first">Newest first</string>
+  <string name="oldest_first">Oldest first</string>
+</resources>

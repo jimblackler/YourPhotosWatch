@@ -4,9 +4,7 @@ import android.animation.AnimatorInflater;
 import android.animation.AnimatorSet;
 import android.content.ContentResolver;
 import android.graphics.Bitmap;
-import android.graphics.Color;
 import android.os.AsyncTask;
-import android.support.v7.widget.CardView;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -15,8 +13,6 @@ import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.ImageView;
 
-import net.jimblackler.yourphotoswatch.R;
-
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,7 +20,7 @@ import java.util.Map;
 public class PhotoRecyclerAdapter extends RecyclerView.Adapter<PhotoRecyclerAdapter.ViewHolder> {
 
   private final Bitmap blankBitmap;
-  private final Map<Long, Bitmap> bitmapCache;
+  private final Map<String, Bitmap> bitmapCache;
   private final PhotoListEntryObserver observer;
   private List<PhotoListEntry> items;
   private ContentResolver contentResolver;
@@ -34,8 +30,8 @@ public class PhotoRecyclerAdapter extends RecyclerView.Adapter<PhotoRecyclerAdap
     this.observer = observer;
     blankBitmap = Bitmap.createBitmap(512, 384, Bitmap.Config.ARGB_8888);
     final int maximumSize = 100;
-    bitmapCache = new LinkedHashMap<Long, Bitmap>(maximumSize, 0.75f, true) {
-      protected boolean removeEldestEntry(Map.Entry<Long, Bitmap> eldest) {
+    bitmapCache = new LinkedHashMap<String, Bitmap>(maximumSize, 0.75f, true) {
+      protected boolean removeEldestEntry(Map.Entry<String, Bitmap> eldest) {
         return size() > maximumSize;
       }
     };
@@ -65,7 +61,7 @@ public class PhotoRecyclerAdapter extends RecyclerView.Adapter<PhotoRecyclerAdap
   }
 
   static class ViewHolder extends RecyclerView.ViewHolder {
-    private final Map<Long, Bitmap> bitmapCache;
+    private final Map<String, Bitmap> bitmapCache;
     private final PhotoListEntryObserver observer;
     private final CheckBox checkBox;
     private final AnimatorSet selectionAnimation;
@@ -75,7 +71,7 @@ public class PhotoRecyclerAdapter extends RecyclerView.Adapter<PhotoRecyclerAdap
     private PhotoListEntry listEntry;
     private AsyncTask<PhotoListEntry, Void, Bitmap> fetcher;
 
-    public ViewHolder(final View view, Map<Long, Bitmap> bitmapCache, Bitmap blankBitmap,
+    public ViewHolder(final View view, Map<String, Bitmap> bitmapCache, Bitmap blankBitmap,
                       final PhotoListEntryObserver observer) {
       super(view);
       imageView = (ImageView) view.findViewById(R.id.imageView);
@@ -115,13 +111,13 @@ public class PhotoRecyclerAdapter extends RecyclerView.Adapter<PhotoRecyclerAdap
       checkBox.setOnCheckedChangeListener(null);
       checkBox.setChecked(listEntry.isEnabled());
 
-      Bitmap bitmap = bitmapCache.get(listEntry.getImageId());
+      Bitmap bitmap = bitmapCache.get(listEntry.getId());
       if (bitmap == null) {
         fetcher = new AsyncTask<PhotoListEntry, Void, Bitmap>() {
           @Override
           protected Bitmap doInBackground(PhotoListEntry... params) {
             Bitmap bitmap = params[0].getBitmap(contentResolver);
-            bitmapCache.put(listEntry.getImageId(), bitmap);
+            bitmapCache.put(listEntry.getId(), bitmap);
             return bitmap;
           }
 

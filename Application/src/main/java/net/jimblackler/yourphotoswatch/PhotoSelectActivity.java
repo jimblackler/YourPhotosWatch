@@ -16,7 +16,6 @@ import android.support.v7.widget.RecyclerView;
 import android.view.Menu;
 import android.view.MenuItem;
 
-import net.jimblackler.yourphotoswatch.R;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
@@ -37,14 +36,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-
 public class PhotoSelectActivity extends Activity implements
     GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener,
     DataApi.DataListener {
 
   private GoogleApiClient googleApiClient;
+  private Map<String, PhotoListEntry> photosById;
   private PhotoRecyclerAdapter recyclerAdapter;
-  private Map<Long, PhotoListEntry> photosById;
 
   @Override
   public void onConnected(Bundle bundle) {
@@ -57,7 +55,7 @@ public class PhotoSelectActivity extends Activity implements
           String[] parts = dataItem.getUri().getPath().split("/");
           switch (parts[1]) {
             case "image":
-              PhotoListEntry photoListEntry = photosById.get(Long.parseLong(parts[2]));
+              PhotoListEntry photoListEntry = photosById.get(parts[2]);
               photoListEntry.setEnabled(true);
               recyclerAdapter.notifyItemChanged(photoListEntry.getPosition());
               break;
@@ -98,9 +96,9 @@ public class PhotoSelectActivity extends Activity implements
     photosById = new HashMap<>();
     int position = 0;
     while (cursor.moveToNext()) {
-      PhotoListEntry photoListEntry = new PhotoListEntry(cursor, position);
+      PhotoListEntry photoListEntry = new PhotoListEntryOnPhone(cursor, position);
       entries.add(photoListEntry);
-      photosById.put(photoListEntry.getImageId(), photoListEntry);
+      photosById.put(photoListEntry.getId(), photoListEntry);
       position++;
     }
 
@@ -109,41 +107,41 @@ public class PhotoSelectActivity extends Activity implements
     recyclerView.setHasFixedSize(true);
     recyclerAdapter =
         new PhotoRecyclerAdapter(entries, new PhotoRecyclerAdapter.PhotoListEntryObserver() {
-      @Override
-      public void modified(final PhotoListEntry listEntry) {
-        new AsyncTask<Void, Void, Void>(){
           @Override
-          protected Void doInBackground(Void... params) {
-            if (googleApiClient.isConnected()) {
+          public void modified(final PhotoListEntry listEntry) {
+            new AsyncTask<Void, Void, Void>() {
+              @Override
+              protected Void doInBackground(Void... params) {
+                if (googleApiClient.isConnected()) {
 
-              String path = "/image/" + Long.toString(listEntry.getImageId());
+                  String path = "/image/" + listEntry.getId();
 
-              if (listEntry.isEnabled()) {
-                PutDataMapRequest dataMap = PutDataMapRequest.create(path);
+                  if (listEntry.isEnabled()) {
+                    PutDataMapRequest dataMap = PutDataMapRequest.create(path);
 
-                Bitmap bitmap = listEntry.getBitmap(getContentResolver());
+                    Bitmap bitmap = listEntry.getBitmap(getContentResolver());
 
-                try {
-                  AutoCropper autoCropper = new AutoCropper(PhotoSelectActivity.this);
-                  bitmap = autoCropper.crop(bitmap);
-                } catch (IOException e) {
-                  e.printStackTrace();
+                    try {
+                      AutoCropper autoCropper = new AutoCropper(PhotoSelectActivity.this);
+                      bitmap = autoCropper.crop(bitmap);
+                    } catch (IOException e) {
+                      e.printStackTrace();
+                    }
+
+                    dataMap.getDataMap().putAsset("photo", toAsset(bitmap));
+                    dataMap.getDataMap().putLong("time", new Date().getTime());
+                    PutDataRequest request = dataMap.asPutDataRequest();
+                    Wearable.DataApi.putDataItem(googleApiClient, request);
+                  } else {
+                    Wearable.DataApi.deleteDataItems(googleApiClient, Uri.parse("wear:" + path));
+                  }
                 }
-
-                dataMap.getDataMap().putAsset("photo", toAsset(bitmap));
-                dataMap.getDataMap().putLong("time", new Date().getTime());
-                PutDataRequest request = dataMap.asPutDataRequest();
-                Wearable.DataApi.putDataItem(googleApiClient, request);
-              } else {
-                Wearable.DataApi.deleteDataItems(googleApiClient, Uri.parse("wear:" + path));
+                return null;
               }
-            }
-            return null;
-          }
-        }.execute();
+            }.execute();
 
-      }
-    });
+          }
+        });
 
     recyclerView.setAdapter(recyclerAdapter);
     LinearLayoutManager layout = new GridLayoutManager(this, 3);
@@ -155,6 +153,12 @@ public class PhotoSelectActivity extends Activity implements
         .addConnectionCallbacks(this)
         .addOnConnectionFailedListener(this)
         .build();
+  }
+
+  private static Asset toAsset(Bitmap bitmap) {
+    ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+    bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteStream);
+    return Asset.createFromBytes(byteStream.toByteArray());
   }
 
   @Override
@@ -182,7 +186,7 @@ public class PhotoSelectActivity extends Activity implements
   public boolean onOptionsItemSelected(MenuItem item) {
     int id = item.getItemId();
 
-    switch(id) {
+    switch (id) {
       case R.id.newest_first:
       case R.id.oldest_first: {
         Intent intent = new Intent(this, PhotoSelectActivity.class);
@@ -195,12 +199,6 @@ public class PhotoSelectActivity extends Activity implements
     }
 
     return super.onOptionsItemSelected(item);
-  }
-
-  private static Asset toAsset(Bitmap bitmap) {
-    ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
-    bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteStream);
-    return Asset.createFromBytes(byteStream.toByteArray());
   }
 
   @Override

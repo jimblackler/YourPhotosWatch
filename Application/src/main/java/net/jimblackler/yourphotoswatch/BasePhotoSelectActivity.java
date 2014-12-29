@@ -1,20 +1,18 @@
 package net.jimblackler.yourphotoswatch;
 
 import android.app.Activity;
-import android.content.ContentResolver;
 import android.content.Intent;
-import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.provider.MediaStore;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -30,18 +28,20 @@ import com.google.android.gms.wearable.Wearable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
-public class PhotoSelectActivity extends Activity implements
+public class BasePhotoSelectActivity extends Activity implements
     GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener,
     DataApi.DataListener {
 
   private GoogleApiClient googleApiClient;
-  private Map<String, PhotoListEntry> photosById;
+  private Map<String, PhotoListEntry> photosById = new HashMap<>();
+  private Set<String> enabledPhotos = new HashSet<String>();
   private PhotoRecyclerAdapter recyclerAdapter;
 
   @Override
@@ -55,8 +55,11 @@ public class PhotoSelectActivity extends Activity implements
           String[] parts = dataItem.getUri().getPath().split("/");
           switch (parts[1]) {
             case "image":
-              PhotoListEntry photoListEntry = photosById.get(parts[2]);
-              photoListEntry.setEnabled(true);
+              String photoId = parts[2];
+              enabledPhotos.add(photoId);
+              PhotoListEntry photoListEntry = photosById.get(photoId);
+              if (photoListEntry == null)
+                continue;
               recyclerAdapter.notifyItemChanged(photoListEntry.getPosition());
               break;
             default:
@@ -77,36 +80,16 @@ public class PhotoSelectActivity extends Activity implements
     Wearable.DataApi.removeListener(googleApiClient, this);
   }
 
-  @Override
-  protected void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-    setContentView(R.layout.photo_select_activity);
-
-    ContentResolver contentResolver = getContentResolver();
-
-    Uri uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
-
-    int sortOrder = getIntent().getIntExtra("sort", R.id.oldest_first);
-    String order = MediaStore.Images.Media.DATE_TAKEN + " " +
-        (sortOrder == R.id.oldest_first ? "ASC" : "DESC");
-
-    Cursor cursor = contentResolver.query(uri, null, null, null, order);
-
-    List<PhotoListEntry> entries = new ArrayList<>();
-    photosById = new HashMap<>();
-    int position = 0;
-    while (cursor.moveToNext()) {
-      PhotoListEntry photoListEntry = new PhotoListEntryOnPhone(cursor, position);
-      entries.add(photoListEntry);
-      photosById.put(photoListEntry.getId(), photoListEntry);
-      position++;
+  public void setEntries(List<PhotoListEntry> entries) {
+    for (PhotoListEntry entry : entries) {
+      photosById.put(entry.getId(), entry);
     }
-
     RecyclerView recyclerView = (RecyclerView) findViewById(R.id.list);
 
     recyclerView.setHasFixedSize(true);
     recyclerAdapter =
-        new PhotoRecyclerAdapter(entries, new PhotoRecyclerAdapter.PhotoListEntryObserver() {
+        new PhotoRecyclerAdapter(entries, enabledPhotos,
+            new PhotoRecyclerAdapter.PhotoListEntryObserver() {
           @Override
           public void modified(final PhotoListEntry listEntry) {
             new AsyncTask<Void, Void, Void>() {
@@ -116,13 +99,13 @@ public class PhotoSelectActivity extends Activity implements
 
                   String path = "/image/" + listEntry.getId();
 
-                  if (listEntry.isEnabled()) {
+                  if (enabledPhotos.contains(listEntry.getId())) {
                     PutDataMapRequest dataMap = PutDataMapRequest.create(path);
 
                     Bitmap bitmap = listEntry.getBitmap(getContentResolver());
 
                     try {
-                      AutoCropper autoCropper = new AutoCropper(PhotoSelectActivity.this);
+                      AutoCropper autoCropper = new AutoCropper(BasePhotoSelectActivity.this);
                       bitmap = autoCropper.crop(bitmap);
                     } catch (IOException e) {
                       e.printStackTrace();
@@ -147,18 +130,23 @@ public class PhotoSelectActivity extends Activity implements
     LinearLayoutManager layout = new GridLayoutManager(this, 3);
     recyclerView.setLayoutManager(layout);
     recyclerView.setItemAnimator(new DefaultItemAnimator());
-
-    googleApiClient = new GoogleApiClient.Builder(this)
-        .addApi(Wearable.API)
-        .addConnectionCallbacks(this)
-        .addOnConnectionFailedListener(this)
-        .build();
   }
 
   private static Asset toAsset(Bitmap bitmap) {
     ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
     bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteStream);
     return Asset.createFromBytes(byteStream.toByteArray());
+  }
+
+  @Override
+  protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setTitle(R.string.title_activity_select_pictures);
+    googleApiClient = new GoogleApiClient.Builder(this)
+        .addApi(Wearable.API)
+        .addConnectionCallbacks(this)
+        .addOnConnectionFailedListener(this)
+        .build();
   }
 
   @Override
@@ -171,7 +159,6 @@ public class PhotoSelectActivity extends Activity implements
   protected void onStop() {
     Wearable.DataApi.removeListener(googleApiClient, this);
     super.onStop();
-
   }
 
   @Override
@@ -189,7 +176,7 @@ public class PhotoSelectActivity extends Activity implements
     switch (id) {
       case R.id.newest_first:
       case R.id.oldest_first: {
-        Intent intent = new Intent(this, PhotoSelectActivity.class);
+        Intent intent = new Intent(this, PhoneSelectActivity.class);
         intent.putExtra("sort", id);
         finish();
         startActivity(intent);

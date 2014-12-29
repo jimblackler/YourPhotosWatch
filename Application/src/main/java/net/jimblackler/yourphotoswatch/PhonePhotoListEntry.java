@@ -1,15 +1,14 @@
 package net.jimblackler.yourphotoswatch;
 
-
 import android.content.ContentResolver;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.provider.MediaStore;
 
-public class PhotoListEntryOnPhone extends PhotoListEntry {
+public class PhonePhotoListEntry extends PhotoListEntry {
   private final long imageId;
 
-  public PhotoListEntryOnPhone(Cursor cursor, int position) {
+  public PhonePhotoListEntry(Cursor cursor, int position) {
     super(position);
     imageId = cursor.getLong(cursor.getColumnIndex(MediaStore.Images.Media._ID));
   }

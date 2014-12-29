@@ -16,18 +16,22 @@ import android.widget.ImageView;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class PhotoRecyclerAdapter extends RecyclerView.Adapter<PhotoRecyclerAdapter.ViewHolder> {
 
   private final Bitmap blankBitmap;
   private final Map<String, Bitmap> bitmapCache;
   private final PhotoListEntryObserver observer;
+  private final Set<String> enabled;
   private List<PhotoListEntry> items;
   private ContentResolver contentResolver;
 
-  public PhotoRecyclerAdapter(List<PhotoListEntry> items, PhotoListEntryObserver observer) {
+  public PhotoRecyclerAdapter(List<PhotoListEntry> items, Set<String> enabled,
+                              PhotoListEntryObserver observer) {
     this.items = items;
     this.observer = observer;
+    this.enabled = enabled;
     blankBitmap = Bitmap.createBitmap(512, 384, Bitmap.Config.ARGB_8888);
     final int maximumSize = 100;
     bitmapCache = new LinkedHashMap<String, Bitmap>(maximumSize, 0.75f, true) {
@@ -42,7 +46,7 @@ public class PhotoRecyclerAdapter extends RecyclerView.Adapter<PhotoRecyclerAdap
     contentResolver = parent.getContext().getContentResolver();
     View view =
         LayoutInflater.from(parent.getContext()).inflate(R.layout.photo_list_entry, parent, false);
-    return new ViewHolder(view, bitmapCache, blankBitmap, observer);
+    return new ViewHolder(view, bitmapCache, blankBitmap, enabled, observer);
   }
 
   @Override
@@ -66,12 +70,14 @@ public class PhotoRecyclerAdapter extends RecyclerView.Adapter<PhotoRecyclerAdap
     private final CheckBox checkBox;
     private final AnimatorSet selectionAnimation;
     private final CompoundButton.OnCheckedChangeListener changeListener;
+    private final Set<String> enabled;
     private ImageView imageView;
     private Bitmap blankBitmap;
     private PhotoListEntry listEntry;
     private AsyncTask<PhotoListEntry, Void, Bitmap> fetcher;
 
     public ViewHolder(final View view, Map<String, Bitmap> bitmapCache, Bitmap blankBitmap,
+                      final Set<String> enabled,
                       final PhotoListEntryObserver observer) {
       super(view);
       imageView = (ImageView) view.findViewById(R.id.imageView);
@@ -79,6 +85,7 @@ public class PhotoRecyclerAdapter extends RecyclerView.Adapter<PhotoRecyclerAdap
       this.bitmapCache = bitmapCache;
       this.blankBitmap = blankBitmap;
       this.observer = observer;
+      this.enabled = enabled;
       checkBox = (CheckBox) view.findViewById(R.id.checkBox);
       selectionAnimation =
           (AnimatorSet) AnimatorInflater.loadAnimator(view.getContext(), R.animator.select_photo);
@@ -93,7 +100,10 @@ public class PhotoRecyclerAdapter extends RecyclerView.Adapter<PhotoRecyclerAdap
         @Override
         public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
           selectionAnimation.start();
-          listEntry.setEnabled(checkBox.isChecked());
+          if (isChecked)
+            enabled.add(listEntry.getId());
+          else
+            enabled.remove(listEntry.getId());
           update(view.getContext().getContentResolver(), listEntry);
           observer.modified(listEntry);
         }
@@ -109,7 +119,7 @@ public class PhotoRecyclerAdapter extends RecyclerView.Adapter<PhotoRecyclerAdap
         fetcher.cancel(false);
 
       checkBox.setOnCheckedChangeListener(null);
-      checkBox.setChecked(listEntry.isEnabled());
+      checkBox.setChecked(enabled.contains(listEntry.getId()));
 
       Bitmap bitmap = bitmapCache.get(listEntry.getId());
       if (bitmap == null) {

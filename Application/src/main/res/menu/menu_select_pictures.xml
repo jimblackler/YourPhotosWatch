@@ -1,6 +1,6 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
       xmlns:tools="http://schemas.android.com/tools"
-      tools:context="net.jimblackler.yourphotoswatch.PhotoSelectActivity">
+      tools:context="net.jimblackler.yourphotoswatch.BasePhotoSelectActivity">
   <item android:id="@+id/oldest_first"
         android:title="@string/oldest_first"
         android:showAsAction="never"

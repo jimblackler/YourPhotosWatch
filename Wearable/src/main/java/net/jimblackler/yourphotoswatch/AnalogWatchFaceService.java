@@ -108,6 +108,7 @@ public class AnalogWatchFaceService extends CanvasWatchFaceService {
     private Bitmap backgroundBitmap;
     private Bitmap backgroundScaledBitmap;
     private String currentPhoto;
+    private Map<String, Long> shownAt = new HashMap<>();
     private GoogleApiClient googleApiClient;
     private boolean mute;
     private Map<String, DataItem> photos;
@@ -311,6 +312,7 @@ public class AnalogWatchFaceService extends CanvasWatchFaceService {
     void updateImage(DataItem dataItem) {
       String[] parts = dataItem.getUri().getPath().split("/");
       currentPhoto = parts[2];
+      shownAt.put(currentPhoto, System.currentTimeMillis());
       Wearable.DataApi.getFdForAsset(googleApiClient,
           DataMapItem.fromDataItem(dataItem).getDataMap().getAsset("photo")).
           setResultCallback(new ResultCallback<DataApi.GetFdForAssetResult>() {
@@ -346,12 +348,15 @@ public class AnalogWatchFaceService extends CanvasWatchFaceService {
       float centerX = width / 2f;
       float centerY = height / 2f;
 
-      float innerTickRadius = centerX - 8;
-      float outerTickRadius = centerX - 4;
+      float innerTickRadius = centerX - 9;
+      float topInnerTickRadius = centerX - 20;
+      float outerTickRadius = centerX - 6;
+
       for (int tickIndex = 0; tickIndex < 12; tickIndex++) {
         float tickRotation = (float) (tickIndex * Math.PI * 2 / 12);
-        float innerX = (float) Math.sin(tickRotation) * innerTickRadius;
-        float innerY = (float) -Math.cos(tickRotation) * innerTickRadius;
+        float useInnerTickRadius = tickIndex == 0 ? topInnerTickRadius : innerTickRadius;
+        float innerX = (float) Math.sin(tickRotation) * useInnerTickRadius;
+        float innerY = (float) -Math.cos(tickRotation) * useInnerTickRadius;
         float outerX = (float) Math.sin(tickRotation) * outerTickRadius;
         float outerY = (float) -Math.cos(tickRotation) * outerTickRadius;
         clockCanvas.drawLine(centerX + innerX, centerY + innerY,
@@ -388,8 +393,23 @@ public class AnalogWatchFaceService extends CanvasWatchFaceService {
       clockCanvas.drawLine(centerX, centerY, centerX + minuteX, centerY + minuteY, handFill);
       clockCanvas.drawLine(centerX, centerY, centerX + hourX, centerY + hourY, handFill);
 
-      if (!isInAmbientMode() && currentPhoto == null && !photos.isEmpty())
-        updateImage(randomElement(photos.values(), new Random()));
+      if (!isInAmbientMode() && currentPhoto == null && !photos.isEmpty()) {
+        long earliestShown = System.currentTimeMillis();
+        String photoToShow = null;
+        for (String photoId : photos.keySet()) {
+          if (!shownAt.containsKey(photoId)) {
+            photoToShow = photoId;
+            break;
+          }
+          long shown = shownAt.get(photoId);
+          if (shown > earliestShown)
+            continue;
+          photoToShow = photoId;
+          earliestShown = shown;
+        }
+        updateImage(photos.get(photoToShow));
+      }
+
 
       if (backgroundScaledBitmap == null
           || backgroundScaledBitmap.getWidth() != width

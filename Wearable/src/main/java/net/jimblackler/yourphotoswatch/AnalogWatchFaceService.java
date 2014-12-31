@@ -373,13 +373,19 @@ public class AnalogWatchFaceService extends CanvasWatchFaceService {
       float hourRotation = fractional(totalSeconds / SECONDS_PER_HALF_DAY) * twoPi;
 
       float secondLength = centerX - 20;
+      float secondLengthReverse = -25;
       float minuteLength = centerX - 35;
       float hourLength = centerX - 90;
 
       if (!isInAmbientMode()) {
-        float secX = (float) Math.sin(secondRotation) * secondLength;
-        float secY = (float) -Math.cos(secondRotation) * secondLength;
-        clockCanvas.drawLine(centerX, centerY, centerX + secX, centerY + secY, secondFill);
+        float secondX0 = (float) Math.sin(secondRotation) * secondLengthReverse;
+        float secondY0 = (float) -Math.cos(secondRotation) * secondLengthReverse;
+
+        float secondX1 = (float) Math.sin(secondRotation) * secondLength;
+        float secondY1 = (float) -Math.cos(secondRotation) * secondLength;
+
+        clockCanvas.drawLine(centerX + secondX0, centerY + secondY0,
+            centerX + secondX1, centerY + secondY1, secondFill);
       }
 
       float minuteX = (float) Math.sin(minuteRotation) * minuteLength;

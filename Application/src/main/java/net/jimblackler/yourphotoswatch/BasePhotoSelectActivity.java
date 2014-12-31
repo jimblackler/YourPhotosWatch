@@ -28,6 +28,7 @@ import com.google.android.gms.wearable.Wearable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -41,7 +42,7 @@ public class BasePhotoSelectActivity extends Activity implements
 
   private GoogleApiClient googleApiClient;
   private Map<String, PhotoListEntry> photosById = new HashMap<>();
-  private Set<String> enabledPhotos = new HashSet<String>();
+  private Set<String> enabledPhotos = new HashSet<>();
   private PhotoRecyclerAdapter recyclerAdapter;
 
   @Override
@@ -80,7 +81,10 @@ public class BasePhotoSelectActivity extends Activity implements
     Wearable.DataApi.removeListener(googleApiClient, this);
   }
 
-  public void setEntries(List<PhotoListEntry> entries) {
+  public void setEntries(List<? extends PhotoListEntry> entries) {
+    if (entries.size() > 0)
+      findViewById(R.id.progress).setVisibility(View.GONE);
+
     for (PhotoListEntry entry : entries) {
       photosById.put(entry.getId(), entry);
     }
@@ -141,6 +145,7 @@ public class BasePhotoSelectActivity extends Activity implements
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+
     setTitle(R.string.title_activity_select_pictures);
     googleApiClient = new GoogleApiClient.Builder(this)
         .addApi(Wearable.API)
@@ -176,7 +181,7 @@ public class BasePhotoSelectActivity extends Activity implements
     switch (id) {
       case R.id.newest_first:
       case R.id.oldest_first: {
-        Intent intent = new Intent(this, PhoneSelectActivity.class);
+        Intent intent = new Intent(this, this.getClass());
         intent.putExtra("sort", id);
         finish();
         startActivity(intent);

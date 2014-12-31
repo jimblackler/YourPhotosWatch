@@ -18,4 +18,7 @@ public abstract class PhotoListEntry {
     return position;
   }
 
+  public abstract int getWidth();
+
+  public abstract int getHeight();
 }

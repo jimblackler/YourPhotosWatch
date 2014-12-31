@@ -20,19 +20,18 @@ import java.util.Set;
 
 public class PhotoRecyclerAdapter extends RecyclerView.Adapter<PhotoRecyclerAdapter.ViewHolder> {
 
-  private final Bitmap blankBitmap;
   private final Map<String, Bitmap> bitmapCache;
   private final PhotoListEntryObserver observer;
   private final Set<String> enabled;
-  private List<PhotoListEntry> items;
+  private List<? extends PhotoListEntry> items;
   private ContentResolver contentResolver;
 
-  public PhotoRecyclerAdapter(List<PhotoListEntry> items, Set<String> enabled,
+  public PhotoRecyclerAdapter(List<? extends PhotoListEntry> items, Set<String> enabled,
                               PhotoListEntryObserver observer) {
     this.items = items;
     this.observer = observer;
     this.enabled = enabled;
-    blankBitmap = Bitmap.createBitmap(512, 384, Bitmap.Config.ARGB_8888);
+
     final int maximumSize = 100;
     bitmapCache = new LinkedHashMap<String, Bitmap>(maximumSize, 0.75f, true) {
       protected boolean removeEldestEntry(Map.Entry<String, Bitmap> eldest) {
@@ -46,7 +45,7 @@ public class PhotoRecyclerAdapter extends RecyclerView.Adapter<PhotoRecyclerAdap
     contentResolver = parent.getContext().getContentResolver();
     View view =
         LayoutInflater.from(parent.getContext()).inflate(R.layout.photo_list_entry, parent, false);
-    return new ViewHolder(view, bitmapCache, blankBitmap, enabled, observer);
+    return new ViewHolder(view, bitmapCache, enabled, observer);
   }
 
   @Override
@@ -72,18 +71,16 @@ public class PhotoRecyclerAdapter extends RecyclerView.Adapter<PhotoRecyclerAdap
     private final CompoundButton.OnCheckedChangeListener changeListener;
     private final Set<String> enabled;
     private ImageView imageView;
-    private Bitmap blankBitmap;
     private PhotoListEntry listEntry;
     private AsyncTask<PhotoListEntry, Void, Bitmap> fetcher;
 
-    public ViewHolder(final View view, Map<String, Bitmap> bitmapCache, Bitmap blankBitmap,
+    public ViewHolder(final View view, Map<String, Bitmap> bitmapCache,
                       final Set<String> enabled,
                       final PhotoListEntryObserver observer) {
       super(view);
       imageView = (ImageView) view.findViewById(R.id.imageView);
 
       this.bitmapCache = bitmapCache;
-      this.blankBitmap = blankBitmap;
       this.observer = observer;
       this.enabled = enabled;
       checkBox = (CheckBox) view.findViewById(R.id.checkBox);
@@ -114,7 +111,7 @@ public class PhotoRecyclerAdapter extends RecyclerView.Adapter<PhotoRecyclerAdap
     public void update(final ContentResolver contentResolver, final PhotoListEntry listEntry) {
       checkBox.setOnCheckedChangeListener(null);
       this.listEntry = listEntry;
-      imageView.setImageBitmap(blankBitmap);
+      imageView.setImageBitmap(Bitmap.createBitmap(listEntry.getWidth(), listEntry.getHeight(), Bitmap.Config.ARGB_8888));
       if (fetcher != null)
         fetcher.cancel(false);
 

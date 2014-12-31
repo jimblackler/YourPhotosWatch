@@ -1,15 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+  <string name="facebook_app_id">693108817469809</string>
 
-    <string name="title_activity_select_pictures">Select photos to show</string>
-    <string name="photo_thumbnail">Photo thumbnail</string>
-    <string name="newest_first">Newest first</string>
-    <string name="oldest_first">Oldest first</string>
-    <string name="facebook_app_id">693108817469809</string>
-    <string name="select_facebook_photos">Select Facebook photos</string>
-    <string name="select_phone_photos">Select photos from phone</string>
-    <string name="action_settings">Settings</string>
-    <string name="main_phone_chooser">Choose photos from your phone</string>
-    <string name="main_facebook_chooser">Choose photos from Facebook</string>
+  <string name="photo_thumbnail">Photo thumbnail</string>
+  <string name="newest_first">Newest first</string>
+  <string name="oldest_first">Oldest first</string>
+
+  <string name="action_settings">Settings</string>
+
+  <string name="title_activity_select_pictures">Select photos to show</string>
+  <string name="select_facebook_photos">Select Facebook photos</string>
+  <string name="select_phone_photos">Select photos from phone</string>
+  <string name="select_picasa_photos">Select photos from Google</string>
+
+  <string name="main_phone_chooser">Choose photos from your phone</string>
+  <string name="main_facebook_chooser">Choose photos from Facebook</string>
+  <string name="main_picasa_chooser">Select photos from your Google account</string>
 
 </resources>

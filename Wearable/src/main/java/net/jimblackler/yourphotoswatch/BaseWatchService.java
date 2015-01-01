@@ -41,23 +41,13 @@ import java.util.Random;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
-public class AnalogWatchFaceService extends CanvasWatchFaceService {
+public abstract class BaseWatchService extends CanvasWatchFaceService {
 
   private static final long INTERACTIVE_UPDATE_RATE_MS = TimeUnit.SECONDS.toMillis(1);
 
+
   static float fractional(float number) {
     return number - (long) number;
-  }
-
-  private static <T> T randomElement(Iterable<T> iterable, Random random) {
-    T result = null;
-    int i = 0;
-    for (T obj : iterable) {
-      i++;
-      if (random.nextInt(i) == 0)
-        result = obj;
-    }
-    return result;
   }
 
   private void extraWake() {
@@ -102,8 +92,9 @@ public class AnalogWatchFaceService extends CanvasWatchFaceService {
       }
     };
     boolean lowBitAmbient;
-    private Paint handFill;
+    private Paint allFill;
     private Paint handStroke;
+    private Paint textStroke;
     private Paint secondFill;
     private Bitmap backgroundBitmap;
     private Bitmap backgroundScaledBitmap;
@@ -127,7 +118,8 @@ public class AnalogWatchFaceService extends CanvasWatchFaceService {
       if (lowBitAmbient) {
         boolean antiAlias = !inAmbientMode;
         handStroke.setAntiAlias(antiAlias);
-        handFill.setAntiAlias(antiAlias);
+        textStroke.setAntiAlias(antiAlias);
+        allFill.setAntiAlias(antiAlias);
         secondFill.setAntiAlias(antiAlias);
       }
       invalidate();
@@ -143,7 +135,7 @@ public class AnalogWatchFaceService extends CanvasWatchFaceService {
       boolean inMuteMode = (interruptionFilter == WatchFaceService.INTERRUPTION_FILTER_NONE);
       if (mute != inMuteMode) {
         mute = inMuteMode;
-        handFill.setAlpha(inMuteMode ? 100 : 255);
+        allFill.setAlpha(inMuteMode ? 100 : 255);
         secondFill.setAlpha(inMuteMode ? 80 : 255);
         invalidate();
       }
@@ -166,7 +158,7 @@ public class AnalogWatchFaceService extends CanvasWatchFaceService {
 
       super.onCreate(holder);
 
-      setWatchFaceStyle(new WatchFaceStyle.Builder(AnalogWatchFaceService.this)
+      setWatchFaceStyle(new WatchFaceStyle.Builder(BaseWatchService.this)
           .setCardPeekMode(WatchFaceStyle.PEEK_MODE_SHORT)
           .setBackgroundVisibility(WatchFaceStyle.BACKGROUND_VISIBILITY_INTERRUPTIVE)
           .setShowSystemUiTime(false)
@@ -174,13 +166,14 @@ public class AnalogWatchFaceService extends CanvasWatchFaceService {
 
       setEmptyBackground();
 
-      handFill = new Paint();
-      handFill.setStyle(Paint.Style.FILL);
+      allFill = new Paint();
+      allFill.setStyle(Paint.Style.FILL);
 
-      handFill.setColor(Color.HSVToColor(255, new float[]{238, 0.75f, 0.50f}));
-      handFill.setStrokeWidth(5f);
-      handFill.setAntiAlias(true);
-      handFill.setStrokeCap(Paint.Cap.ROUND);
+      allFill.setColor(Color.HSVToColor(255, new float[]{238, 0.75f, 0.50f}));
+      allFill.setStrokeWidth(5f);
+      allFill.setAntiAlias(true);
+      allFill.setStrokeCap(Paint.Cap.ROUND);
+      allFill.setTextSize(getDigitalTextSize());
 
       handStroke = new Paint();
       handStroke.setStyle(Paint.Style.STROKE);
@@ -188,6 +181,12 @@ public class AnalogWatchFaceService extends CanvasWatchFaceService {
       handStroke.setStrokeWidth(10f);
       handStroke.setAntiAlias(true);
       handStroke.setStrokeCap(Paint.Cap.ROUND);
+
+      textStroke = new Paint();
+      textStroke.setStyle(Paint.Style.FILL);
+      textStroke.setColor(Color.WHITE);
+      textStroke.setAntiAlias(true);
+      textStroke.setTextSize(getDigitalTextSize());
 
       secondFill = new Paint();
       secondFill.setColor(Color.WHITE);
@@ -198,7 +197,7 @@ public class AnalogWatchFaceService extends CanvasWatchFaceService {
       photos = new HashMap<>();
 
       time = new Time();
-      googleApiClient = new GoogleApiClient.Builder(AnalogWatchFaceService.this)
+      googleApiClient = new GoogleApiClient.Builder(BaseWatchService.this)
           .addApi(Wearable.API)
           .addConnectionCallbacks(this)
           .build();
@@ -226,7 +225,7 @@ public class AnalogWatchFaceService extends CanvasWatchFaceService {
 
       registeredTimeZoneReceiver = true;
       IntentFilter filter = new IntentFilter(Intent.ACTION_TIMEZONE_CHANGED);
-      AnalogWatchFaceService.this.registerReceiver(timeZoneReceiver, filter);
+      BaseWatchService.this.registerReceiver(timeZoneReceiver, filter);
     }
 
     private void unregisterReceiver() {
@@ -234,7 +233,7 @@ public class AnalogWatchFaceService extends CanvasWatchFaceService {
         return;
 
       registeredTimeZoneReceiver = false;
-      AnalogWatchFaceService.this.unregisterReceiver(timeZoneReceiver);
+      BaseWatchService.this.unregisterReceiver(timeZoneReceiver);
     }
 
     private void setEmptyBackground() {
@@ -339,6 +338,9 @@ public class AnalogWatchFaceService extends CanvasWatchFaceService {
     public void onDraw(Canvas canvas, Rect bounds) {
       time.setToNow();
 
+      if (false) {  // Screenshot mode.
+        time.set(36, 10, 10, 1, 1, 2014);
+      }
       int width = bounds.width();
       int height = bounds.height();
 
@@ -348,74 +350,104 @@ public class AnalogWatchFaceService extends CanvasWatchFaceService {
       float centerX = width / 2f;
       float centerY = height / 2f;
 
-      float innerTickRadius = centerX - 9;
-      float topInnerTickRadius = centerX - 20;
-      float outerTickRadius = centerX - 6;
+      if (isAnalog()) {
 
-      for (int tickIndex = 0; tickIndex < 12; tickIndex++) {
-        float tickRotation = (float) (tickIndex * Math.PI * 2 / 12);
-        float useInnerTickRadius = tickIndex == 0 ? topInnerTickRadius : innerTickRadius;
-        float innerX = (float) Math.sin(tickRotation) * useInnerTickRadius;
-        float innerY = (float) -Math.cos(tickRotation) * useInnerTickRadius;
-        float outerX = (float) Math.sin(tickRotation) * outerTickRadius;
-        float outerY = (float) -Math.cos(tickRotation) * outerTickRadius;
-        clockCanvas.drawLine(centerX + innerX, centerY + innerY,
-            centerX + outerX, centerY + outerY, handStroke);
-        clockCanvas.drawLine(centerX + innerX, centerY + innerY,
-            centerX + outerX, centerY + outerY, handFill);
+        float innerTickRadius = centerX - 9;
+        float topInnerTickRadius = centerX - 20;
+        float outerTickRadius = centerX - 6;
+
+        for (int tickIndex = 0; tickIndex < 12; tickIndex++) {
+          float tickRotation = (float) (tickIndex * Math.PI * 2 / 12);
+          float useInnerTickRadius = tickIndex == 0 ? topInnerTickRadius : innerTickRadius;
+          float innerX = (float) Math.sin(tickRotation) * useInnerTickRadius;
+          float innerY = (float) -Math.cos(tickRotation) * useInnerTickRadius;
+          float outerX = (float) Math.sin(tickRotation) * outerTickRadius;
+          float outerY = (float) -Math.cos(tickRotation) * outerTickRadius;
+          clockCanvas.drawLine(centerX + innerX, centerY + innerY,
+              centerX + outerX, centerY + outerY, handStroke);
+          clockCanvas.drawLine(centerX + innerX, centerY + innerY,
+              centerX + outerX, centerY + outerY, allFill);
+        }
+
+        float totalMinutes = time.minute + time.hour * MINUTES_PER_HOUR;
+        float totalSeconds = time.second + totalMinutes * SECONDS_PER_MINUTE;
+        float twoPi = (float) (Math.PI * 2);
+        float secondRotation = fractional(totalSeconds / SECONDS_PER_MINUTE) * twoPi;
+        float minuteRotation = fractional(totalSeconds / SECONDS_PER_HOUR) * twoPi;
+        float hourRotation = fractional(totalSeconds / SECONDS_PER_HALF_DAY) * twoPi;
+
+        float secondLength = centerX - 20;
+        float secondLengthReverse = -25;
+        float minuteLength = centerX - 35;
+        float hourLength = centerX - 90;
+
+        if (!isInAmbientMode()) {
+          float secondX0 = (float) Math.sin(secondRotation) * secondLengthReverse;
+          float secondY0 = (float) -Math.cos(secondRotation) * secondLengthReverse;
+
+          float secondX1 = (float) Math.sin(secondRotation) * secondLength;
+          float secondY1 = (float) -Math.cos(secondRotation) * secondLength;
+
+          clockCanvas.drawLine(centerX + secondX0, centerY + secondY0,
+              centerX + secondX1, centerY + secondY1, secondFill);
+        }
+
+        float minuteX = (float) Math.sin(minuteRotation) * minuteLength;
+        float minuteY = (float) -Math.cos(minuteRotation) * minuteLength;
+
+        float hourX = (float) Math.sin(hourRotation) * hourLength;
+        float hourY = (float) -Math.cos(hourRotation) * hourLength;
+
+        clockCanvas.drawLine(centerX, centerY, centerX + minuteX, centerY + minuteY, handStroke);
+        clockCanvas.drawLine(centerX, centerY, centerX + hourX, centerY + hourY, handStroke);
+        clockCanvas.drawLine(centerX, centerY, centerX + minuteX, centerY + minuteY, allFill);
+        clockCanvas.drawLine(centerX, centerY, centerX + hourX, centerY + hourY, allFill);
       }
-
-      float totalMinutes = time.minute + time.hour * MINUTES_PER_HOUR;
-      float totalSeconds = time.second + totalMinutes * SECONDS_PER_MINUTE;
-      float twoPi = (float) (Math.PI * 2);
-      float secondRotation = fractional(totalSeconds / SECONDS_PER_MINUTE) * twoPi;
-      float minuteRotation = fractional(totalSeconds / SECONDS_PER_HOUR) * twoPi;
-      float hourRotation = fractional(totalSeconds / SECONDS_PER_HALF_DAY) * twoPi;
-
-      float secondLength = centerX - 20;
-      float secondLengthReverse = -25;
-      float minuteLength = centerX - 35;
-      float hourLength = centerX - 90;
-
-      if (!isInAmbientMode()) {
-        float secondX0 = (float) Math.sin(secondRotation) * secondLengthReverse;
-        float secondY0 = (float) -Math.cos(secondRotation) * secondLengthReverse;
-
-        float secondX1 = (float) Math.sin(secondRotation) * secondLength;
-        float secondY1 = (float) -Math.cos(secondRotation) * secondLength;
-
-        clockCanvas.drawLine(centerX + secondX0, centerY + secondY0,
-            centerX + secondX1, centerY + secondY1, secondFill);
-      }
-
-      float minuteX = (float) Math.sin(minuteRotation) * minuteLength;
-      float minuteY = (float) -Math.cos(minuteRotation) * minuteLength;
-
-      float hourX = (float) Math.sin(hourRotation) * hourLength;
-      float hourY = (float) -Math.cos(hourRotation) * hourLength;
-
-      clockCanvas.drawLine(centerX, centerY, centerX + minuteX, centerY + minuteY, handStroke);
-      clockCanvas.drawLine(centerX, centerY, centerX + hourX, centerY + hourY, handStroke);
-      clockCanvas.drawLine(centerX, centerY, centerX + minuteX, centerY + minuteY, handFill);
-      clockCanvas.drawLine(centerX, centerY, centerX + hourX, centerY + hourY, handFill);
 
       if (!isInAmbientMode() && currentPhoto == null && !photos.isEmpty()) {
         long earliestShown = System.currentTimeMillis();
         String photoToShow = null;
+        int unshownCount = 0;
+        Random random = new Random();
         for (String photoId : photos.keySet()) {
-          if (!shownAt.containsKey(photoId)) {
+          if (shownAt.containsKey(photoId)) {
+            if (unshownCount > 0)
+              continue;
+            long shown = shownAt.get(photoId);
+            if (shown > earliestShown)
+              continue;
             photoToShow = photoId;
-            break;
+            earliestShown = shown;
+          } else {
+            unshownCount++;
+            if (random.nextInt(unshownCount) == 0)
+              photoToShow = photoId;
           }
-          long shown = shownAt.get(photoId);
-          if (shown > earliestShown)
-            continue;
-          photoToShow = photoId;
-          earliestShown = shown;
         }
         updateImage(photos.get(photoToShow));
       }
 
+      if (isDigital()) {
+
+        int hours;
+
+        if (true) { // 12 hour
+          hours = time.hour % 12;
+          if (hours == 0)
+            hours += 12;
+        }
+
+        String text;
+
+        if (isAmPm()) {
+          text = String.format("%d:%02d %s", hours, time.minute, (time.hour < 12) ? "AM" : "PM");
+        } else {
+          text = String.format("%d:%02d", hours, time.minute);
+        }
+
+        float textWidth = textStroke.measureText(text);
+        clockCanvas.drawText(text, centerX - textWidth / 2, centerY - getDigitalOffset(), textStroke);
+      }
 
       if (backgroundScaledBitmap == null
           || backgroundScaledBitmap.getWidth() != width
@@ -428,7 +460,11 @@ public class AnalogWatchFaceService extends CanvasWatchFaceService {
 
       Bitmap shadowed = BitmapEffect.createShadow(clockBitmap);
       canvas.drawBitmap(shadowed, 0, 0, null);
-      canvas.drawBitmap(clockBitmap, 0, 0, null);
+      Paint draw = new Paint();
+      if (currentPhoto != null) {
+        draw.setAlpha(180);
+      }
+      canvas.drawBitmap(clockBitmap, 0, 0, draw);
 
       shadowed.recycle();
       clockBitmap.recycle();
@@ -436,4 +472,10 @@ public class AnalogWatchFaceService extends CanvasWatchFaceService {
 
 
   }
+
+  protected abstract boolean isAmPm();
+  protected abstract float getDigitalTextSize();
+  protected abstract float getDigitalOffset();
+  protected abstract boolean isAnalog();
+  protected abstract boolean isDigital();
 }

@@ -2,5 +2,7 @@
 
 <resources>
   <string name="app_name">Your Photos Watch</string>
-  <string name="analog_name">Your Photos Watch</string>
+  <string name="analog_name">Your Photos (Analog)</string>
+  <string name="digital_name">Your Photos (Digital)</string>
+  <string name="hybrid_name">Your Photos (Hybrid)</string>
 </resources>

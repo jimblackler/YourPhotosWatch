@@ -3,7 +3,9 @@ package net.jimblackler.yourphotoswatch;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.support.annotation.NonNull;
+import android.view.View;
 
 import com.facebook.FacebookRequestError;
 import com.facebook.HttpMethod;
@@ -21,6 +23,8 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 public class FacebookSelectActivity extends BasePhotoSelectActivity {
@@ -60,8 +64,10 @@ public class FacebookSelectActivity extends BasePhotoSelectActivity {
   }
 
   private void getPhotos(Session session) {
+    findViewById(R.id.progress).setVisibility(View.VISIBLE);
     Bundle params = new Bundle();
     params.putInt("limit", 500);
+    params.putString("fields", "source,id,images,created_time");
     new Request(session, "/me/photos/uploaded", params, HttpMethod.GET,
         new Request.Callback() {
           public void onCompleted(Response response) {
@@ -70,12 +76,12 @@ public class FacebookSelectActivity extends BasePhotoSelectActivity {
               System.out.println(error.toString());
               return;
             }
-            AsyncTask<JSONObject, Void, List<PhotoListEntry>> asyncTask =
-                new AsyncTask<JSONObject, Void, List<PhotoListEntry>>() {
+            AsyncTask<JSONObject, Void, List<? extends PhotoListEntry>> asyncTask =
+                new AsyncTask<JSONObject, Void, List<? extends PhotoListEntry>>() {
                   @Override
-                  protected List<PhotoListEntry> doInBackground(JSONObject... params) {
+                  protected List<? extends PhotoListEntry> doInBackground(JSONObject... params) {
                     try {
-                      List<PhotoListEntry> entries = new ArrayList<>();
+                      List<FacebookPhotoListEntry> entries = new ArrayList<>();
                       int position = 0;
                       JSONObject obj = params[0];
                       JSONArray array = obj.getJSONArray("data");
@@ -84,6 +90,19 @@ public class FacebookSelectActivity extends BasePhotoSelectActivity {
                         entries.add(new FacebookPhotoListEntry(position, entry));
                         position++;
                       }
+
+                      final int sortOrder = getIntent().getIntExtra("sort", R.id.oldest_first);
+
+                      Collections.sort(entries, new Comparator<FacebookPhotoListEntry>(){
+                        @Override
+                        public int compare(FacebookPhotoListEntry lhs, FacebookPhotoListEntry rhs) {
+                          if (sortOrder == R.id.oldest_first)
+                            return lhs.getPublishDate().compareTo(rhs.getPublishDate());
+                          else
+                            return rhs.getPublishDate().compareTo(lhs.getPublishDate());
+                        }
+                      });
+
                       return entries;
                     } catch (JSONException e) {
                       throw new RuntimeException(e);
@@ -91,7 +110,7 @@ public class FacebookSelectActivity extends BasePhotoSelectActivity {
                   }
 
                   @Override
-                  protected void onPostExecute(List<PhotoListEntry> entries) {
+                  protected void onPostExecute(List<? extends PhotoListEntry> entries) {
                     setEntries(entries);
                   }
                 };

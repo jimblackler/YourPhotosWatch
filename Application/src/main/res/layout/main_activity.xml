@@ -98,5 +98,30 @@
 
   </android.support.v7.widget.CardView>
 
+
+  <android.support.v7.widget.CardView
+      xmlns:card_view="http://schemas.android.com/apk/res-auto"
+      android:id="@+id/about"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_margin="12dp"
+      android:foreground="?android:attr/selectableItemBackground"
+      card_view:contentPadding="4dp"
+      card_view:cardCornerRadius="8dp"
+      card_view:cardElevation="10dp">
+
+
+
+      <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:padding="10dp"
+          android:textAppearance="?android:attr/textAppearanceMedium"
+          android:text="@string/about_app"/>
+
+
+
+  </android.support.v7.widget.CardView>
+
 </LinearLayout>
 

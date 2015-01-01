@@ -32,7 +32,7 @@ public class PhotoRecyclerAdapter extends RecyclerView.Adapter<PhotoRecyclerAdap
     this.observer = observer;
     this.enabled = enabled;
 
-    final int maximumSize = 100;
+    final int maximumSize = 80;
     bitmapCache = new LinkedHashMap<String, Bitmap>(maximumSize, 0.75f, true) {
       protected boolean removeEldestEntry(Map.Entry<String, Bitmap> eldest) {
         return size() > maximumSize;
@@ -111,7 +111,13 @@ public class PhotoRecyclerAdapter extends RecyclerView.Adapter<PhotoRecyclerAdap
     public void update(final ContentResolver contentResolver, final PhotoListEntry listEntry) {
       checkBox.setOnCheckedChangeListener(null);
       this.listEntry = listEntry;
-      imageView.setImageBitmap(Bitmap.createBitmap(listEntry.getWidth(), listEntry.getHeight(), Bitmap.Config.ARGB_8888));
+      try {
+        imageView.setImageBitmap(Bitmap.createBitmap(listEntry.getWidth(),
+            listEntry.getHeight(), Bitmap.Config.ARGB_8888));
+      } catch (OutOfMemoryError e) {
+        bitmapCache.clear();
+        imageView.setImageBitmap(null);
+      }
       if (fetcher != null)
         fetcher.cancel(false);
 
@@ -123,9 +129,14 @@ public class PhotoRecyclerAdapter extends RecyclerView.Adapter<PhotoRecyclerAdap
         fetcher = new AsyncTask<PhotoListEntry, Void, Bitmap>() {
           @Override
           protected Bitmap doInBackground(PhotoListEntry... params) {
-            Bitmap bitmap = params[0].getBitmap(contentResolver);
-            bitmapCache.put(listEntry.getId(), bitmap);
-            return bitmap;
+            try {
+              Bitmap bitmap = params[0].getBitmap(contentResolver);
+              bitmapCache.put(listEntry.getId(), bitmap);
+              return bitmap;
+            } catch (OutOfMemoryError e) {
+              bitmapCache.clear();
+              return null;
+            }
           }
 
           @Override

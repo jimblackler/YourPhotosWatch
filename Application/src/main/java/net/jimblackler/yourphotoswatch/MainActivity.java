@@ -16,38 +16,33 @@ public class MainActivity extends Activity {
     findViewById(R.id.select_from_phone).setOnClickListener(new View.OnClickListener() {
       @Override
       public void onClick(View v) {
-        Intent intent = new Intent(MainActivity.this, PhoneSelectActivity.class);
-        startActivity(intent);
+        startActivity(new Intent(MainActivity.this, PhoneSelectActivity.class));
+      }
+    });
+
+    findViewById(R.id.select_from_picasa).setOnClickListener(new View.OnClickListener() {
+      @Override
+      public void onClick(View v) {
+        startActivity(new Intent(MainActivity.this, PicasaSelectActivity.class));
       }
     });
 
     findViewById(R.id.select_from_facebook).setOnClickListener(new View.OnClickListener() {
       @Override
       public void onClick(View v) {
-        Intent intent = new Intent(MainActivity.this, FacebookSelectActivity.class);
-        startActivity(intent);
+        startActivity(new Intent(MainActivity.this, FacebookSelectActivity.class));
       }
     });
 
+    findViewById(R.id.about).setOnClickListener(new View.OnClickListener() {
+      @Override
+      public void onClick(View v) {
+        startActivity(new Intent(MainActivity.this, AboutActivity.class));
+      }
+    });
+
+
+
   }
 
-
-  @Override
-  public boolean onCreateOptionsMenu(Menu menu) {
-    getMenuInflater().inflate(R.menu.menu_main, menu);
-    return true;
-  }
-
-  @Override
-  public boolean onOptionsItemSelected(MenuItem item) {
-
-    int id = item.getItemId();
-
-    //noinspection SimplifiableIfStatement
-    if (id == R.id.action_settings) {
-      return true;
-    }
-
-    return super.onOptionsItemSelected(item);
-  }
 }

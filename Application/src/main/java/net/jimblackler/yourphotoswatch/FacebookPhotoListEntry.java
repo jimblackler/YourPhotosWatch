@@ -13,11 +13,17 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
+public class FacebookPhotoListEntry extends InternetPhotoListEntry {
+  private final Date publishDate;
+  private final String id;
+  private final int width;
+  private final int height;
 
-public class FacebookPhotoListEntry extends PhotoListEntry {
-  String id;
-  Uri imageUri;
   public FacebookPhotoListEntry(int position, JSONObject entry) {
     super(position);
     try {
@@ -44,28 +50,35 @@ public class FacebookPhotoListEntry extends PhotoListEntry {
       }
       imageUri = Uri.parse(bestImage.getString("source"));
       id = entry.getString("id");
-    } catch (JSONException e) {
+      DateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ");
+
+      String createdTimeString = entry.getString("created_time");
+      publishDate = format.parse(createdTimeString);
+      width = bestImage.getInt("width");
+      height = bestImage.getInt("height");
+
+    } catch (JSONException | ParseException e) {
       throw new RuntimeException(e);
     }
   }
 
-  @Override
-  public Bitmap getBitmap(ContentResolver contentResolver) {
-    try {
-      URL url = new URL(imageUri.toString());
-      HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-      connection.setDoInput(true);
-      connection.connect();
-      InputStream input = connection.getInputStream();
-      return BitmapFactory.decodeStream(input);
-    } catch (IOException e) {
-      e.printStackTrace();
-      return null;
-    }
-  }
 
   @Override
   public String getId() {
     return "facebook_" + id;
+  }
+
+  @Override
+  public int getWidth() {
+    return width;
+  }
+
+  @Override
+  public int getHeight() {
+    return height;
+  }
+
+  public Date getPublishDate() {
+    return publishDate;
   }
 }

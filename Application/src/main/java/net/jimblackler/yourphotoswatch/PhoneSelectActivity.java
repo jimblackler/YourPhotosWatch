@@ -13,9 +13,7 @@ public class PhoneSelectActivity extends BasePhotoSelectActivity {
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
-
     super.onCreate(savedInstanceState);
-
     setContentView(R.layout.photo_select_activity);
 
     ContentResolver contentResolver = getContentResolver();

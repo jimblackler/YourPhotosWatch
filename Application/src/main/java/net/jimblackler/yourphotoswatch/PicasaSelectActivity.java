@@ -7,16 +7,16 @@ import android.content.SharedPreferences.Editor;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.util.JsonReader;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 
 import com.google.android.gms.auth.GoogleAuthException;
 import com.google.android.gms.auth.GoogleAuthUtil;
+import com.google.android.gms.auth.GooglePlayServicesAvailabilityException;
 import com.google.android.gms.auth.UserRecoverableAuthException;
 import com.google.android.gms.common.AccountPicker;
-
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
-import org.xml.sax.InputSource;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,14 +24,11 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
-import javax.xml.namespace.NamespaceContext;
-import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathConstants;
-import javax.xml.xpath.XPathExpressionException;
-import javax.xml.xpath.XPathFactory;
+import net.jimblackler.yourphotoswatch.ReaderUtil.ReaderException;
 
 public class PicasaSelectActivity extends BasePhotoSelectActivity {
   static final int REQUEST_CODE_PICK_ACCOUNT = 1;
@@ -39,6 +36,9 @@ public class PicasaSelectActivity extends BasePhotoSelectActivity {
 
   @Override
   protected void onActivityResult(int requestCode, int resultCode, final Intent data) {
+
+    if (resultCode == RESULT_CANCELED)
+      finish();
 
     if (resultCode != RESULT_OK)
       return;
@@ -79,9 +79,7 @@ public class PicasaSelectActivity extends BasePhotoSelectActivity {
     new AsyncTask<Void, Void, String>() {
       @Override
       protected String doInBackground(Void... params) {
-
         try {
-
           Editor editor;
           String scope = "oauth2:https://picasaweb.google.com/data/";
           String token = GoogleAuthUtil.getToken(PicasaSelectActivity.this, email, scope);
@@ -104,14 +102,22 @@ public class PicasaSelectActivity extends BasePhotoSelectActivity {
   }
 
   protected void fetchPhotos() {
-    String feed = "https://picasaweb.google.com/data/feed/base/user/101378164668882205053/albumid/1000000482205053?v=2";
-    findViewById(R.id.progress).setVisibility(View.VISIBLE);
+    final SharedPreferences settings =
+        PreferenceManager.getDefaultSharedPreferences(PicasaSelectActivity.this);
+    final String email = settings.getString("email", "");
+    String feed = "https://picasaweb.google.com/data/feed/api/user/" + email + "?kind=photo&max-results=5000&alt=json&fields=entry(published,title,media:group(media:title,media:content))";
+
+    runOnUiThread(new Runnable(){
+      @Override
+      public void run() {
+        findViewById(R.id.progress).setVisibility(View.VISIBLE);
+      }
+    });
+
     new AsyncTask<String, Void, List<? extends PhotoListEntry>>() {
       @Override
       protected List<? extends PhotoListEntry> doInBackground(String... params) {
         try {
-
-          List<PhotoListEntry> entriesOut = new ArrayList<>();
           HttpURLConnection connection = (HttpURLConnection) new URL(params[0]).openConnection();
           String token = PreferenceManager.getDefaultSharedPreferences(PicasaSelectActivity.this).
               getString("token", "");
@@ -121,8 +127,6 @@ public class PicasaSelectActivity extends BasePhotoSelectActivity {
           if (code == HttpURLConnection.HTTP_UNAUTHORIZED ||
               code == HttpURLConnection.HTTP_FORBIDDEN) {
             // Token cleared and forgotten.
-            SharedPreferences settings =
-                PreferenceManager.getDefaultSharedPreferences(PicasaSelectActivity.this);
             Editor editor = settings.edit();
             editor.remove("token");
             editor.commit();
@@ -130,46 +134,59 @@ public class PicasaSelectActivity extends BasePhotoSelectActivity {
             authenticateFromEmailAndFetch();
             return null;
           }
-          InputStream inputStream = connection.getInputStream();
 
-          XPathFactory factory = XPathFactory.newInstance();
-          XPath xPath = factory.newXPath();
-          xPath.setNamespaceContext(new NamespaceContext() {
-            @Override
-            public String getNamespaceURI(String prefix) {
-              switch (prefix) {
-                case "ns":
-                  return "http://www.w3.org/2005/Atom";
-                case "gphoto":
-                  return "http://schemas.google.com/photos/2007";
-                case "media":
-                  return "http://search.yahoo.com/mrss/";
-                case "openSearch":
-                  return "http://a9.com/-/spec/opensearchrss/1.0/";
+          final List<PicasaPhotoListEntry> entries = new ArrayList<>();
+          final InputStream inputStream = connection.getInputStream();
+          JsonReader reader = new JsonReader(new InputStreamReader(inputStream));
+
+
+            reader.beginObject();
+            while (reader.hasNext()) {
+              String name = reader.nextName();
+              switch (name) {
+                case "feed":
+                  reader.beginObject();
+                  while (reader.hasNext()) {
+                    name = reader.nextName();
+                    switch (name) {
+                      case "entry":
+                        reader.beginArray();
+                        while (reader.hasNext()) {
+                          PicasaPhotoListEntry entry =
+                              new PicasaPhotoListEntry(reader, entries.size());
+                          if (entry.isValid())
+                            entries.add(entry);
+                        }
+                        reader.endArray();
+                        break;
+                      default:
+                        reader.skipValue();
+                    }
+                  }
+                  reader.endObject();
+                  break;
                 default:
-                  return null;
+                reader.skipValue();
+
               }
             }
+            reader.endObject();
 
-            @Override
-            public String getPrefix(String namespaceURI) {
-              return null;
-            }
+          final int sortOrder = getIntent().getIntExtra("sort", R.id.oldest_first);
 
+          Collections.sort(entries, new Comparator<PicasaPhotoListEntry>() {
             @Override
-            public Iterator getPrefixes(String namespaceURI) {
-              return null;
+            public int compare(PicasaPhotoListEntry lhs, PicasaPhotoListEntry rhs) {
+              if (sortOrder == R.id.oldest_first)
+                return lhs.getPublishDate().compareTo(rhs.getPublishDate());
+              else
+                return rhs.getPublishDate().compareTo(lhs.getPublishDate());
             }
           });
-          NodeList entries = (NodeList) xPath.evaluate("/ns:feed/ns:entry",
-              new InputSource(new InputStreamReader(inputStream)), XPathConstants.NODESET);
-          for (int i = 0; i < entries.getLength(); i++) {
-            Element entry = (Element) entries.item(i);
-            entriesOut.add(new PicasaPhotoListEntry(entry, xPath, i));
-          }
-          return entriesOut;
 
-        } catch (XPathExpressionException | IOException | GoogleAuthException e) {
+          return entries;
+
+        } catch (IOException | GoogleAuthException | ReaderException e) {
           throw new RuntimeException(e);
         }
       }
@@ -190,4 +207,42 @@ public class PicasaSelectActivity extends BasePhotoSelectActivity {
     authenticateFromEmailAndFetch();
   }
 
+  @Override
+  public boolean onCreateOptionsMenu(Menu menu) {
+    if (!super.onCreateOptionsMenu(menu))
+      return false;
+    menu.add(R.string.picasa_logout).setOnMenuItemClickListener(
+        new MenuItem.OnMenuItemClickListener() {
+      @Override
+      public boolean onMenuItemClick(MenuItem item) {
+        new AsyncTask<Void, Void, Void>(){
+          @Override
+          protected Void doInBackground(Void... params) {
+            SharedPreferences settings =
+                PreferenceManager.getDefaultSharedPreferences(PicasaSelectActivity.this);
+            try {
+              Editor editor = settings.edit();
+              if (settings.contains("token")) {
+                editor.remove("token");
+                GoogleAuthUtil.clearToken(PicasaSelectActivity.this, settings.getString("token", ""));
+              }
+              if (settings.contains("email")) {
+                editor.remove("email");
+              }
+              editor.commit();
+            } catch (IOException | GoogleAuthException e) {
+              e.printStackTrace();
+            }
+            finish();
+            return null;
+          }
+        }.execute();
+
+        return true;
+      }
+    });
+
+    return true;
+
+  }
 }

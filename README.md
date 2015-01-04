@@ -85,7 +85,7 @@ A query of images in the [Media Store](http://developer.android.com/reference/an
 [Two](https://github.com/jimblackler/YourPhotosWatch/blob/master/Application/src/main/java/net/jimblackler/yourphotoswatch/PhoneSelectActivity.java) [classes](https://github.com/jimblackler/YourPhotosWatch/blob/master/Application/src/main/java/net/jimblackler/yourphotoswatch/PhonePhotoListEntry.java
 ) handle the import of photos and handling in a Recycler Adapter. (This project marked the first time I've used the new [Recycler View](https://developer.android.com/training/material/lists-cards.html) on an Android project.)
 
-One nice feature of this API is that the pictures can be requested in a (couple of thumbnail sizes)[http://developer.android.com/reference/android/provider/MediaStore.Images.Thumbnails.html]. The MINI_KIND size approximates at 512 x 384, which is actually larger than the typical target watch size of 320 x 320. That way my app doesn't have to downscale massive camera images itself.
+One nice feature of this API is that the pictures can be requested in a [couple of thumbnail sizes](http://developer.android.com/reference/android/provider/MediaStore.Images.Thumbnails.html). The MINI_KIND size approximates at 512 x 384, which is actually larger than the typical target watch size of 320 x 320. That way my app doesn't have to downscale massive camera images itself.
 
 Google
 ------

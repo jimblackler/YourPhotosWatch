@@ -117,6 +117,6 @@ Another hurdle was that apps that request permission to view user photos need to
 The app
 =======
 
-Like all my apps it’s completely free. It’s (on the Play Store)[https://play.google.com/store/apps/details?id=net.jimblackler.yourphotoswatch] from today. This one is licensed under Apache 2, and the source (can be found on GitHub)[https://github.com/jimblackler/YourPhotosWatch].
+Like all my apps it’s completely free. It’s [on the Play Store](https://play.google.com/store/apps/details?id=net.jimblackler.yourphotoswatch) from today. This one is licensed under Apache 2, and the source [can be found on GitHub](https://github.com/jimblackler/YourPhotosWatch).
 
 Feel free to get in touch on jimblackler@gmail.com if you have any thoughts or queries about the app.

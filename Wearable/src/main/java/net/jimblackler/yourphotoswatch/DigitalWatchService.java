@@ -4,12 +4,12 @@ public class DigitalWatchService extends BaseWatchService {
 
   @Override
   protected float getDigitalTextSize() {
-    return 55;
+    return 65;
   }
 
   @Override
   protected float getDigitalOffset() {
-    return -70;
+    return -55;
   }
 
   @Override

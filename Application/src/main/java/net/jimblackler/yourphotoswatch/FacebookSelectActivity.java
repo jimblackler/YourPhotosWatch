@@ -74,6 +74,7 @@ public class FacebookSelectActivity extends BasePhotoSelectActivity {
             FacebookRequestError error = response.getError();
             if (error != null) {
               System.out.println(error.toString());
+              setEntries(null);
               return;
             }
             AsyncTask<JSONObject, Void, List<? extends PhotoListEntry>> asyncTask =

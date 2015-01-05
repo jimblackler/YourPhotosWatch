@@ -11,6 +11,7 @@ import android.util.JsonReader;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Toast;
 
 import com.google.android.gms.auth.GoogleAuthException;
 import com.google.android.gms.auth.GoogleAuthUtil;
@@ -92,7 +93,8 @@ public class PicasaSelectActivity extends BasePhotoSelectActivity {
         } catch (UserRecoverableAuthException e) {
           startActivityForResult(e.getIntent(), REQUEST_CODE_REQUEST_AUTHORIZATION);
         } catch (GoogleAuthException | IOException e) {
-          throw new RuntimeException(e);
+          e.printStackTrace();
+          finish();
         }
         return null;
       }
@@ -187,14 +189,15 @@ public class PicasaSelectActivity extends BasePhotoSelectActivity {
           return entries;
 
         } catch (IOException | GoogleAuthException | ReaderException e) {
-          throw new RuntimeException(e);
+          e.printStackTrace();
+          return null;
         }
       }
 
       @Override
       protected void onPostExecute(List<? extends PhotoListEntry> entries) {
-        if (entries != null)
-          setEntries(entries);
+
+        setEntries(entries);
       }
     }.execute(feed);
   }

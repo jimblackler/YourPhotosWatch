@@ -13,6 +13,7 @@ import android.support.v7.widget.RecyclerView;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -82,8 +83,14 @@ public class BasePhotoSelectActivity extends Activity implements
   }
 
   public void setEntries(List<? extends PhotoListEntry> entries) {
-    if (entries.size() > 0)
-      findViewById(R.id.progress).setVisibility(View.GONE);
+    findViewById(R.id.progress).setVisibility(View.GONE);
+    photosById.clear();
+
+    if (entries == null) {
+      Toast.makeText(this, getString(R.string.network_error_message), Toast.LENGTH_LONG).show();
+      finish();
+      return;
+    }
 
     for (PhotoListEntry entry : entries) {
       photosById.put(entry.getId(), entry);

@@ -1,0 +1,18 @@
+# Facebook
+-keep class com.facebook.** { *; }
+-keepattributes Signature
+
+# JavaCV
+-keep class org.bytedeco.**{ *; }
+-keep interface org.bytedeco.**{ *; }
+-keepclassmembers class org.bytedeco.** {
+    <methods>;
+}
+
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
+# App
+-dontwarn
+-printusage unused.txt

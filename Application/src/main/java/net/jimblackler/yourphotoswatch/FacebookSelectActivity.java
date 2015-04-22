@@ -3,7 +3,6 @@ package net.jimblackler.yourphotoswatch;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.view.View;
 
@@ -58,7 +57,7 @@ public class FacebookSelectActivity extends BasePhotoSelectActivity {
       }
     });
     Session session = Session.getActiveSession();
-    if (session != null) {
+    if (session != null && session.isOpened()) {
       getPhotos(session);
     }
   }
